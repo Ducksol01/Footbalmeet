@@ -36,75 +36,107 @@ const VideoRoom = ({ roomId, userName }) => {
   const [peers, setPeers] = useState([]);
   const [localStream, setLocalStream] = useState(null);
   const localVideoRef = useRef(null);
-  
   useEffect(() => {
-    // Create mock peers for demonstration purposes
-    const mockPeers = [
-      { id: 'user1', name: 'John' },
-      { id: 'user2', name: 'Emma' },
-      { id: 'user3', name: 'Michael' },
-    ];
+    // Connect to socket server
+    socketEvents.connect();
     
-    setPeers(mockPeers);
+    // Join the room
+    socketEvents.joinRoom(roomId, userName);
     
-    // Try to initialize camera if available
-    const initCamera = async () => {
-      try {
-        // Check if mediaDevices is supported
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: true, 
-            audio: true 
-          });
-          
-          setLocalStream(stream);
-          
-          if (localVideoRef.current) {
-            localVideoRef.current.srcObject = stream;
-          }
-        } else {
-          console.log('Media devices not supported in this browser');
-        }
-      } catch (err) {
-        console.error("Error accessing media devices:", err);
+    // Listen for room participants updates
+    socketEvents.onRoomUsers((users) => {
+      // Find our own ID in the participants list
+      const localUser = users.find(user => user.userName === userName);
+      if (localUser) {
+        localParticipantId.current = localUser.id;
       }
-    };
-    
-    initCamera();
       
+      // Update participants list
+      setParticipants(users);
+    });
+    
+    // Cleanup on unmount
     return () => {
-      // Clean up
-      if (localStream) {
-        localStream.getTracks().forEach(track => {
-          track.stop();
+      socketEvents.cleanup();
+      socketEvents.disconnect();
+    };
+  }, [roomId, userName]);
+
+  // Get local media stream
+  useEffect(() => {
+    const getLocalMedia = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true
         });
+        setLocalStream(stream);
+      } catch (error) {
+        console.error('Error accessing media devices:', error);
+        // If we can't get video/audio, still allow joining with placeholders
+        setIsVideoOn(false);
       }
     };
-  }, [roomId]);
-  
+
+    getLocalMedia();
+
+    // Cleanup function
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  // Toggle audio/video functions that also notify the server
+  const toggleAudio = (muted) => {
+    setIsMuted(muted);
+    if (localStream) {
+      localStream.getAudioTracks().forEach(track => {
+        track.enabled = !muted;
+      });
+    }
+    socketEvents.toggleAudio(muted);
+  };
+
+  const toggleVideo = (videoOn) => {
+    setIsVideoOn(videoOn);
+    if (localStream) {
+      localStream.getVideoTracks().forEach(track => {
+        track.enabled = videoOn;
+      });
+    }
+    socketEvents.toggleVideo(videoOn);
+  };
+
+  // Make these functions available to parent components (like ControlPanel)
+  useEffect(() => {
+    // Add these functions to window so ControlPanel can access them
+    window.videoRoomControls = {
+      toggleAudio,
+      toggleVideo
+    };
+    
+    return () => {
+      delete window.videoRoomControls;
+    };
+  }, [localStream]);
+
   return (
-    <VideoRoomContainer>
-      {/* Local video */}
-      <LocalVideoContainer
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <video 
-          ref={localVideoRef} 
-          autoPlay 
-          playsInline 
-          muted 
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-        />
-        <ParticipantName>{userName} (You)</ParticipantName>
-      </LocalVideoContainer>
-      
-      {/* Remote participants */}
-      {peers.map((peer) => (
-        <VideoParticipant 
-          key={peer.id}
-          peerName={peer.name}
+    <VideoRoomContainer
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Filter out the local participant from the list */}
+      {participants.map(participant => (
+        <VideoParticipant
+          key={participant.id}
+          stream={participant.id === localParticipantId.current ? localStream : null}
+          name={participant.id === localParticipantId.current ? `${participant.userName} (You)` : participant.userName}
+          isLocal={participant.id === localParticipantId.current}
+          isMuted={participant.isMuted}
+          isVideoOn={participant.isVideoOn}
         />
       ))}
     </VideoRoomContainer>

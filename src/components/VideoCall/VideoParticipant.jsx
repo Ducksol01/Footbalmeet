@@ -1,94 +1,65 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 
 const ParticipantContainer = styled(motion.div)`
-  width: 300px;
-  height: 200px;
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 75%; /* 4:3 aspect ratio */
+  background-color: rgba(0, 0, 0, 0.2);
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-  border: 2px solid #2196f3;
-  position: relative;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 `;
 
-const ParticipantVideo = styled.div`
+const VideoElement = styled.video`
+  position: absolute;
   width: 100%;
   height: 100%;
-  background-color: #1a3a5f;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  overflow: hidden;
+  object-fit: cover;
 `;
 
-const ParticipantAvatar = styled.div`
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background-color: #2196f3;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 2rem;
-  font-weight: bold;
+const ParticipantInfo = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
   color: white;
-  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 10;
 `;
 
 const ParticipantName = styled.div`
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  background-color: rgba(0, 0, 0, 0.6);
-  color: white;
-  padding: 5px 10px;
-  border-radius: 4px;
+  font-weight: bold;
   font-size: 14px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 `;
 
-const ParticipantAudioIndicator = styled.div`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: ${props => props.isActive ? '#4caf50' : 'transparent'};
+const StatusIndicators = styled.div`
   display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: all 0.3s ease;
-  
-  svg {
-    width: 18px;
-    height: 18px;
-    color: white;
-  }
+  gap: 8px;
 `;
 
-// Animated background for participants
-const AnimatedBackground = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
+const MicIndicator = styled.div`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: ${props => props.isMuted ? '#f44336' : '#4caf50'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(45deg, #1a3a5f, #2196f3);
-    opacity: 0.7;
+    content: '${props => props.isMuted ? '🔇' : '🔊'}';
+    font-size: 12px;
   }
-  
-  &::after {
     content: '';
     position: absolute;
     top: 0;

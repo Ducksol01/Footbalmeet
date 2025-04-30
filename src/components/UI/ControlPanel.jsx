@@ -1,118 +1,145 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 
-const ControlPanelContainer = styled.div`
+const ControlPanelContainer = styled(motion.div)`
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 1rem;
-  background-color: rgba(10, 25, 41, 0.8);
+  gap: 15px;
+  padding: 15px 25px;
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 10;
+  border-radius: 50px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
 const ControlButton = styled(motion.button)`
-  display: flex;
-  justify-content: center;
-  align-items: center;
   width: 50px;
   height: 50px;
   border-radius: 50%;
   border: none;
-  background-color: ${props => props.active ? '#4caf50' : props.danger ? '#f44336' : '#2c3e50'};
+  background-color: ${props => props.active ? '#2196f3' : '#333'};
   color: white;
-  margin: 0 10px;
+  font-size: 20px;
   cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
-  }
-
-  svg {
-    width: 24px;
-    height: 24px;
-  }
-`;
-
-const ButtonGroup = styled.div`
   display: flex;
-  gap: 15px;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s;
+  
+  &:hover {
+    background-color: ${props => props.active ? '#1976d2' : '#444'};
+  }
+  
+  &.danger {
+    background-color: #f44336;
+    
+    &:hover {
+      background-color: #d32f2f;
+    }
+  }
 `;
 
 const ControlPanel = () => {
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoOff, setIsVideoOff] = useState(false);
+  const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   
+  // Check if videoRoomControls is available from VideoRoom component
+  useEffect(() => {
+    // This ensures we have access to the controls exposed by VideoRoom
+    if (!window.videoRoomControls) {
+      console.warn('VideoRoom controls not available yet');
+    }
+  }, []);
+  
+  const toggleMute = () => {
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+    
+    // Use the controls exposed by VideoRoom if available
+    if (window.videoRoomControls && window.videoRoomControls.toggleAudio) {
+      window.videoRoomControls.toggleAudio(newMutedState);
+    } else {
+      console.warn('Cannot toggle audio: controls not available');
+    }
+  };
+  
+  const toggleVideo = () => {
+    const newVideoState = !isVideoOn;
+    setIsVideoOn(newVideoState);
+    
+    // Use the controls exposed by VideoRoom if available
+    if (window.videoRoomControls && window.videoRoomControls.toggleVideo) {
+      window.videoRoomControls.toggleVideo(newVideoState);
+    } else {
+      console.warn('Cannot toggle video: controls not available');
+    }
+  };
+  
+  const toggleScreenShare = () => {
+    setIsScreenSharing(!isScreenSharing);
+    // Screen sharing would require additional implementation
+    // For now, we'll just show a placeholder
+    alert('Screen sharing feature coming soon!');
+  };
+  
+  const leaveCall = () => {
+    // Disconnect from socket before leaving
+    if (window.videoRoomControls && window.videoRoomControls.disconnect) {
+      window.videoRoomControls.disconnect();
+    }
+    
+    // Navigate back to home page
+    window.location.href = '/';
+  };
+
   return (
-    <ControlPanelContainer>
-      <ButtonGroup>
-        <ControlButton 
-          onClick={() => setIsMuted(!isMuted)}
-          active={!isMuted}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {isMuted ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M0 0h24v24H0z" fill="none"/>
-              <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z"/>
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M0 0h24v24H0z" fill="none"/>
-              <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/>
-            </svg>
-          )}
-        </ControlButton>
-
-        <ControlButton 
-          onClick={() => setIsVideoOff(!isVideoOff)}
-          active={!isVideoOff}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          {isVideoOff ? (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M0 0h24v24H0zm0 0h24v24H0z" fill="none"/>
-              <path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/>
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M0 0h24v24H0z" fill="none"/>
-              <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-            </svg>
-          )}
-        </ControlButton>
-
-        <ControlButton 
-          onClick={() => setIsScreenSharing(!isScreenSharing)}
-          active={isScreenSharing}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M0 0h24v24H0z" fill="none"/>
-            <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/>
-          </svg>
-        </ControlButton>
-
-        <ControlButton 
-          danger
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M0 0h24v24H0z" fill="none"/>
-            <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
-          </svg>
-        </ControlButton>
-      </ButtonGroup>
+    <ControlPanelContainer
+      initial={{ y: 100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ delay: 0.5, duration: 0.5 }}
+    >
+      <ControlButton 
+        onClick={toggleMute}
+        active={!isMuted}
+        whileTap={{ scale: 0.9 }}
+        title={isMuted ? "Unmute" : "Mute"}
+      >
+        {isMuted ? '🔇' : '🔊'}
+      </ControlButton>
+      
+      <ControlButton 
+        onClick={toggleVideo}
+        active={isVideoOn}
+        whileTap={{ scale: 0.9 }}
+        title={isVideoOn ? "Turn off camera" : "Turn on camera"}
+      >
+        {isVideoOn ? '📹' : '🚫'}
+      </ControlButton>
+      
+      <ControlButton 
+        onClick={toggleScreenShare}
+        active={isScreenSharing}
+        whileTap={{ scale: 0.9 }}
+        title={isScreenSharing ? "Stop sharing screen" : "Share screen"}
+      >
+        {isScreenSharing ? '📺' : '💻'}
+      </ControlButton>
+      
+      <ControlButton 
+        className="danger"
+        onClick={leaveCall}
+        whileTap={{ scale: 0.9 }}
+        title="Leave call"
+      >
+        📞
+      </ControlButton>
     </ControlPanelContainer>
   );
 };
